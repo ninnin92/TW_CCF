@@ -83,14 +83,20 @@ def win_ccf(d1, d2):
     return cor_list
 
 
-def heatmap_show(df, name, ex, trial, path):
+def heatmap_show(df, name, ex, trial, path, first):
     sns.set(style="white")  # テーマ
     f, ax = plt.subplots(figsize=(16, 9))  # Figサイズ
     cmap = sns.diverging_palette(220, 10, as_cmap=True)  # カラーパレット
     sns.heatmap(df, square=True, cmap=cmap, linewidths=.5, vmax=1, vmin=-1,
                           cbar_kws={"shrink": 0.6}, ax=ax)
 
-    plt.title("Windowed Xcorr  _  " + name + "-" + exp + "-" + trial, fontsize=24, y=1.08)
+    if first == "L":
+        focus = "    L - R : 0    R - L : 1"
+    else:
+        focus = "    R - L : 0    L - R : -1"
+
+    title = "Windowed Xcorr  _  " + name + "-" + exp + "-" + trial + "\n" + "first:  " + first + focus
+    plt.title(title , fontsize=24, y=1.08)
     plt.xlabel("Time", fontsize=20, labelpad=20)  # Xのラベルサイズ
     plt.ylabel("Lag", fontsize=20, labelpad=20)  # Yのラベルサイズ
     plt.tick_params(labelsize=16)
@@ -107,6 +113,15 @@ def heatmap_show(df, name, ex, trial, path):
 ################################################
 
 if __name__ == '__main__':
+
+    print("Run Process")
+    print("------------------")
+    print("Option:  " + option)
+    print("Maxlag:  " + str(maxlag))
+    print("Window:  "  + str(window))
+    print("By:  " + str(by))
+    print("------------------")
+
     if option == "A":
         base = pd.ExcelFile("time_analysis_Adult.xlsx")
         outpath = "adult"
@@ -120,10 +135,13 @@ if __name__ == '__main__':
     df_base = base.parse("time", index_col="s")
     ID_list    = set(df_base["ID"].tolist())  # メインファイルのIDリストを獲得して、重複削除
 
+    df_sum = pd.DataFrame()
+
     for ID in ID_list:
-        # 前処理
-        # 今はエラーを除外して分析、エラーを解析するなら複製データがいるかも
+        print("Run  " + ID)
         data = df_base[df_base["ID"] == ID]
+        age = data["age"].head(1).item()
+        sex = data["sex"].head(1).item()
 
         for tr in range(1, 4):
             try:
@@ -138,12 +156,19 @@ if __name__ == '__main__':
                 except:
                     break
 
+                # 前処理
+                # 今はエラーを除外して分析、エラーを解析するなら複製データがいるかも
                 # 余分なものを削除、エラー関係のも
                 data = data[data["step"] > 2]
                 data = data[data["error"] != 1]
 
                 data_L = data[data["L_Key"] == "L"].sort_values(by="step").reset_index()
                 data_R = data[data["R_Key"] == "R"].sort_values(by="step").reset_index()
+
+                if data_L["step"].head(1).item() % 2 != 0:
+                    first_turn = "L"
+                else:
+                    first_turn = "R"
 
                 data = pd.DataFrame({"L": data_L["Time"], "R": data_R["Time"]})
 
@@ -215,8 +240,9 @@ if __name__ == '__main__':
                 df_melt.columns = new_col
                 df_melt["Lag"] = l
                 df_melt = pd.melt(df_melt, id_vars=["Lag"], value_vars=new_col)  # ラグを基準に縦長にデータを変換
-                df_melt = df_melt.assign(ID=ID, exp=exp, trial_num=tr)
+                df_melt = df_melt.assign(ID=ID, exp=exp, trial_num=tr, age=age, sex=sex)
                 #print(df_melt)
+                df_sum = pd.concat([df_sum, df_melt])
                 df_melt.to_csv("csv_" + outpath + "/df_ccf_" + ID + "-" + exp + "-" + tr + ".csv", index=False)
 
                 # そのあと、ピボットテーブルに再変換
@@ -224,5 +250,8 @@ if __name__ == '__main__':
                 #print(df_plot)
 
                 # ヒートマップ描画、保存
-                heatmap_show(df_plot, ID, exp, tr, outpath)
+                heatmap_show(df_plot, ID, exp, tr, outpath, first_turn)
                 plt.close()
+
+    df_sum.to_csv("csv_" + outpath + "/cross-corr-Adult.csv", index=False)
+    print("End Process")
