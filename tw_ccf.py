@@ -13,7 +13,7 @@ import math
 ################################################
 #  宣言
 ################################################
-option = "A"
+option = "C"
 maxlag = 3  # 最大のラグ数（正負にこの数だけズラす）
 window = 6  # 何個の要素を持った窓にするか
 by     = 1      # 窓から窓へは何個ずつ増えるか（いくつ被るのを許容するか）
@@ -134,7 +134,6 @@ if __name__ == '__main__':
     # データ読み込み
     df_base = base.parse("time", index_col="s")
     ID_list    = set(df_base["ID"].tolist())  # メインファイルのIDリストを獲得して、重複削除
-
     df_sum = pd.DataFrame()
 
     for ID in ID_list:
@@ -143,41 +142,46 @@ if __name__ == '__main__':
         age = data["age"].head(1).item()
         sex = data["sex"].head(1).item()
 
-        for tr in range(1, 4):
-            try:
-                data = data[data["trial_Num"] == tr]
-                tr = str(tr)
-            except:
-                break
+        for exp in ["demo", "indivi", "joint", "prac"]:
+            #print(exp)
+            #print(data["exp"])
+            data_exp = data[data["exp"] == exp]
+            #print(data_exp)
+            if data_exp.empty:
+                continue
+            else:
+                print(exp)
 
-            for exp in ["demo", "indivi", "joint", "prac"]:
-                try:
-                    data = data[data["exp"] == exp]
-                except:
-                    break
+            for tr in range(1, 5):
+                data_tr = data_exp[data_exp["trial_Num"] == tr]
+                tr = str(tr)
+                if data_tr.empty:
+                    continue
+                else:
+                    print(tr)
 
                 # 前処理
                 # 今はエラーを除外して分析、エラーを解析するなら複製データがいるかも
                 # 余分なものを削除、エラー関係のも
-                data = data[data["step"] > 2]
-                data = data[data["error"] != 1]
+                data_tr = data_tr[data_tr["step"] > 2]
+                data_tr = data_tr[data_tr["error"] != 1]
 
-                data_L = data[data["L_Key"] == "L"].sort_values(by="step").reset_index()
-                data_R = data[data["R_Key"] == "R"].sort_values(by="step").reset_index()
+                data_L = data_tr[data_tr["L_Key"] == "L"].sort_values(by="step").reset_index()
+                data_R = data_tr[data_tr["R_Key"] == "R"].sort_values(by="step").reset_index()
 
                 if data_L["step"].head(1).item() % 2 != 0:
                     first_turn = "L"
                 else:
                     first_turn = "R"
 
-                data = pd.DataFrame({"L": data_L["Time"], "R": data_R["Time"]})
+                data_x = pd.DataFrame({"L": data_L["Time"], "R": data_R["Time"]})
 
                 #print(data)
 
 
                 # 対象になる２列を指定、列の長さ確認
-                x = data.iloc[:, 0]  # 列数で指定したいときはiloc、ixは挙動がちんぷんかんぷん
-                y = data.iloc[:, 1]
+                x = data_x.iloc[:, 0]  # 列数で指定したいときはiloc、ixは挙動がちんぷんかんぷん
+                y = data_x.iloc[:, 1]
 
                 #print(x)
                 #print(y)
@@ -253,5 +257,5 @@ if __name__ == '__main__':
                 heatmap_show(df_plot, ID, exp, tr, outpath, first_turn)
                 plt.close()
 
-    df_sum.to_csv("csv_" + outpath + "/cross-corr-Adult.csv", index=False)
+    df_sum.to_csv("csv_" + outpath + "/cross-corr-" + outpath + ".csv", index=False)
     print("End Process")
