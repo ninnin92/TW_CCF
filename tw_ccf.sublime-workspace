@@ -51,7 +51,7 @@
 			"file": "tw_ccf.py",
 			"settings":
 			{
-				"buffer_size": 7952,
+				"buffer_size": 7932,
 				"line_ending": "Unix"
 			}
 		}
@@ -150,15 +150,15 @@
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 7952,
+						"buffer_size": 7932,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								5075,
-								5075
+								289,
+								289
 							]
 						],
 						"settings":
@@ -229,7 +229,7 @@
 							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 2856.0,
+						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
 					"stack_index": 0,
