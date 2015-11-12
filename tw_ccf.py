@@ -123,10 +123,10 @@ if __name__ == '__main__':
     print("------------------")
 
     if option == "A":
-        base = pd.ExcelFile("time_analysis_Adult.xlsx")
+        base = pd.ExcelFile("time_analysis_Adult2.xlsx")
         outpath = "adult"
     elif option == "C":
-        base = pd.ExcelFile("time_analysis.xlsx")
+        base = pd.ExcelFile("time_analysis2.xlsx")
         outpath = "child"
     else:
         sys.exit()
@@ -257,5 +257,5 @@ if __name__ == '__main__':
                 heatmap_show(df_plot, ID, exp, tr, outpath, first_turn)
                 plt.close()
 
-    df_sum.to_csv("cross-corr-" + outpath + ".csv", index=False)
+    df_sum.to_csv("cross-corr-" + outpath + "2.csv", index=False)
     print("End Process")
