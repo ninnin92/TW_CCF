@@ -13,9 +13,9 @@ import math
 ################################################
 #  宣言
 ################################################
-option = "C"
+option = "A"
 maxlag = 3  # 最大のラグ数（正負にこの数だけズラす）
-window = 10  # 何個の要素を持った窓にするか
+window = 19  # 何個の要素を持った窓にするか
 by     = 1      # 窓から窓へは何個ずつ増えるか（いくつ被るのを許容するか）
 n_overlap = window - by
 
@@ -73,7 +73,7 @@ def win_ccf(d1, d2):
 
     cor_list = []
 
-    # ある時点（列）での窓同士を選択して、相関解析　→　それを各列
+    # ある時点（列）での窓同士を選択して、相関解析 → それを各列
     for x in range(0, len(d1.columns)):
         a1 = np.array(d1.iloc[:, x])
         a2 = np.array(d2.iloc[:, x])
@@ -123,10 +123,10 @@ if __name__ == '__main__':
     print("------------------")
 
     if option == "A":
-        base = pd.ExcelFile("time_analysis_Adult2.xlsx")
+        base = pd.ExcelFile("time_analysis_Adult.xlsx")
         outpath = "adult"
     elif option == "C":
-        base = pd.ExcelFile("time_analysis2.xlsx")
+        base = pd.ExcelFile("time_analysis.xlsx")
         outpath = "child"
     else:
         sys.exit()
@@ -244,10 +244,10 @@ if __name__ == '__main__':
                 df_melt.columns = new_col
                 df_melt["Lag"] = l
                 df_melt = pd.melt(df_melt, id_vars=["Lag"], value_vars=new_col)  # ラグを基準に縦長にデータを変換
-                df_melt = df_melt.assign(ID=ID, exp=exp, trial_num=tr, age=age, sex=sex)
+                df_melt = df_melt.assign(ID=ID, exp=exp, trial_num=tr, age=age, sex=sex, first_trun=first_turn)
                 #print(df_melt)
                 df_sum = pd.concat([df_sum, df_melt])
-                df_melt.to_csv("csv_" + outpath + "/df_ccf_" + ID + "-" + exp + "-" + tr + ".csv", index=False)
+                df_melt.to_csv("csv_" + outpath + "/df_ccf_" + ID + "-" + exp + "-" + tr + "2.csv", index=False)
 
                 # そのあと、ピボットテーブルに再変換
                 df_plot = pd.pivot_table(data=df_melt, values="value", columns="variable", index="Lag", aggfunc=np.mean)
