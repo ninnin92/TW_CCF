@@ -15,7 +15,7 @@ import math
 ################################################
 option = "A"
 maxlag = 3  # 最大のラグ数（正負にこの数だけズラす）
-window = 19  # 何個の要素を持った窓にするか
+window = 20  # 何個の要素を持った窓にするか
 by     = 1      # 窓から窓へは何個ずつ増えるか（いくつ被るのを許容するか）
 n_overlap = window - by
 
@@ -79,6 +79,11 @@ def win_ccf(d1, d2):
         a2 = np.array(d2.iloc[:, x])
         cor = np.corrcoef(a1, a2)[0][1]
         cor_list.append(cor)
+
+    if len(cor_list) < 2:
+        # print(len(cor_list))
+        cor_list = cor_list[0]
+        # print("hoge")
 
     return cor_list
 
@@ -213,7 +218,7 @@ if __name__ == '__main__':
                     Xi = window_df(Xi, window, by)  # 窓ごとに分割
                     #print(Xi)
                     xcor = win_ccf(Xi, Yi)  # すべての窓について相互相関
-                    C.iloc[i , :] = xcor  # 出力データフレームの書き換え
+                    C.iloc[i, :] = xcor  # 出力データフレームの書き換え
                     #print(C)
 
                 # 0からmaxlagまで：X列を固定、Y列を動かす
@@ -226,6 +231,7 @@ if __name__ == '__main__':
                     Yi = window_df(Yi, window, by)
                     #print(Yi)
                     xcor = win_ccf(Xi, Yi)
+                    #print(xcor)
                     C.iloc[i + maxlag, :] = xcor
 
                 t = list(np.arange(1, nx, round((nx / len(Xi.columns)), 2)))  # Timeの表現（何個の窓ができるのか）
@@ -247,7 +253,7 @@ if __name__ == '__main__':
                 df_melt = df_melt.assign(ID=ID, exp=exp, trial_num=tr, age=age, sex=sex, first_trun=first_turn)
                 #print(df_melt)
                 df_sum = pd.concat([df_sum, df_melt])
-                df_melt.to_csv("csv_" + outpath + "/df_ccf_" + ID + "-" + exp + "-" + tr + "2.csv", index=False)
+                df_melt.to_csv("csv_" + outpath + "/df_ccf_" + ID + "-" + exp + "-" + tr + ".csv", index=False)
 
                 # そのあと、ピボットテーブルに再変換
                 df_plot = pd.pivot_table(data=df_melt, values="value", columns="variable", index="Lag", aggfunc=np.mean)
