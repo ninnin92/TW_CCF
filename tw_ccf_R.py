@@ -13,9 +13,9 @@ import math
 ################################################
 #  宣言
 ################################################
-option = "C"
+option = "A"
 maxlag = 1  # 最大のラグ数（正負にこの数だけズラす）
-window = 10  # 何個の要素を持った窓にするか
+window = 5  # 何個の要素を持った窓にするか
 by     = 1      # 窓から窓へは何個ずつ増えるか（いくつ被るのを許容するか）
 n_overlap = window - by
 
@@ -24,9 +24,22 @@ n_overlap = window - by
 ################################################
 
 
+def window_df(s, window, by):
+    win_list = []
+    times = math.floor(((len(s) - window) / by) + 1)  # 窓の個数：floorで切り捨て
+    for p in range(0, times):
+        win_s = s[(0 + by * p) : (window + by * p)]  # データを窓に分割
+        win_s = win_s.reset_index(drop=True)
+        win_list.append(win_s)
+
+    df = pd.concat(win_list, axis=1)
+
+    return df
+
+
 def tw_ccf(d1, d2, maxlag, window, by):
 
-    n = 0
+    ix = 0
     x = d1
     y = d2
 
@@ -34,73 +47,35 @@ def tw_ccf(d1, d2, maxlag, window, by):
     ny = len(y)
 
     lag = list(np.arange(-maxlag, maxlag + 1))    # ラグ
-    #print(lag)
-    i_list = list(range(maxlag + 1, nx - maxlag - window + 1))
-    #print(i_list)
-    C = pd.DataFrame(0, index=np.arange(maxlag * 2 + 1),
-                                 columns=np.arange(len(i_list)))
+    # print(lag)
+    cor = pd.DataFrame(0, index=np.arange(maxlag * 2 + 1), columns=np.arange(1))
+
+    Xm = x.mean(axis=0)
+    Ym = y.mean(axis=0)
+
+    Xsd = x.std(ddof=0)
+    Ysd = y.std(ddof=0)
 
     for l in lag:
-        #print(l)
-        cor_list = []
+        # print(l)
+        c = 0
 
-        if l <= 0:
-            for i in i_list:
-                X = x[i:i + window]
-                Y = y[i + l:i + window + l]
-                #print(X)
-                #print(Y)
+        if l < 0:
+            for n in range((- l), nx):
+                c = c + (x.iloc[n] - Xm) * (y.iloc[n + l] - Ym)
 
-                Xm = X.mean(axis=0)
-                Ym = Y.mean(axis=0)
-                #print(Xm)
-                #print(Ym)
+        if l >= 0:
+            for n in range(0, nx - l):
+                c = c + (x.iloc[n] - Xm) * (y.iloc[n + l] - Ym)
 
-                Xsd = X.std(ddof=0)
-                Ysd = Y.std(ddof=0)
-                #print(Xsd)
-                #print(Ysd)
+        c = c / nx
+        r = c / (Xsd * Ysd)
 
-                Z = [(Xi - Xm) * (Yi - Ym) / (Xsd * Ysd) for Xi, Yi in zip(list(X), list(Y))]
-                #print(sum(Z))
-                r = (1 / window) * sum(Z)
-                #print(r)
-                cor_list.append(r)
+        cor.iloc[ix, :] = r
+        ix += 1
 
-        if l > 0:
-            for i in i_list:
-                X = x[i - l:i + window - l]
-                Y = y[i :i + window]
-                #print(X)
-                #print(Y)
-
-                Xm = X.mean(axis=0)
-                Ym = Y.mean(axis=0)
-                #print(Xm)
-                #print(Ym)
-
-                Xsd = X.std(ddof=0)
-                Ysd = Y.std(ddof=0)
-                #print(Xsd)
-                #print(Ysd)
-
-                Z = [((Xi - Xm) * (Yi - Ym)) / (Xsd * Ysd) for Xi, Yi in zip(list(X), list(Y))]
-                #print(sum(Z))
-                r = (1 / window) * sum(Z)
-                #print(r)
-                cor_list.append(r)
-
-        #print(C)
-        #print(cor_list)
-        C.iloc[n, :] = cor_list
-        n += 1
-
-    if len(cor_list) < 2:
-        # print(len(cor_list))
-        cor_list = cor_list[0]
-        # print("hoge")
-
-    return(C)
+    cor = pd.Series(cor.values.flatten())
+    return(cor)
 
 
 def heatmap_show(df, name, ex, trial, path, first):
@@ -111,9 +86,9 @@ def heatmap_show(df, name, ex, trial, path, first):
                           cbar_kws={"shrink": 0.6}, ax=ax)
 
     if first == "L":
-        focus = "    L - R : 0    R - L : -1"
+        focus = "    L - R : 0    R - L : 1"
     else:
-        focus = "    R - L : 0    L - R : 1"
+        focus = "    R - L : 0    L - R : -1"
 
     title = "Windowed Xcorr  _  " + name + "-" + ex + "-" + trial + "\n" + "first:  " + first + focus
     plt.title(title , fontsize=24, y=1.08)
@@ -124,7 +99,7 @@ def heatmap_show(df, name, ex, trial, path, first):
     cax = plt.gcf().axes[-1]
     cax.tick_params(labelsize=16, pad=10)
 
-    plt.savefig("fig_" + path + "/tw_ccf_" + name + "-" + ex + "-" + trial + ".png")
+    plt.savefig("fig2_" + path + "/tw_ccf_" + name + "-" + ex + "-" + trial + "-sample.png")
     #plt.show()
 
 
@@ -163,10 +138,10 @@ if __name__ == '__main__':
         sex = data["sex"].head(1).item()
 
         for exp in ["demo", "indivi", "joint", "prac"]:
-            #print(exp)
-            #print(data["exp"])
+            # print(exp)
+            # print(data["exp"])
             data_exp = data[data["exp"] == exp]
-            #print(data_exp)
+            # print(data_exp)
             if data_exp.empty:
                 continue
             else:
@@ -194,53 +169,75 @@ if __name__ == '__main__':
                 else:
                     first_turn = "R"
 
+                # 前処理
+                # 今はエラーを除外して分析、エラーを解析するなら複製データがいるかも
+                # 余分なものを削除、エラー関係のも
+
                 data_x = pd.DataFrame({"L": data_L["Time"], "R": data_R["Time"]})
 
-                #print(data)
-
+                print(data_x)
 
                 # 対象になる２列を指定、列の長さ確認
                 x = data_x.iloc[:, 0]  # 列数で指定したいときはiloc、ixは挙動がちんぷんかんぷん
                 y = data_x.iloc[:, 1]
 
-                #print(x)
-                #print(y)
+                # print(x)
+                # print(y)
 
                 nx = len(x)
                 ny = len(y)
 
                 # 出力データフレームを仮作成
+                dfC = pd.DataFrame(0, index=np.arange(maxlag * 2 + 1),
+                                   columns=np.arange((nx - n_overlap) / (window - n_overlap)))
+                # print(dfC)
 
-                result = tw_ccf(x, y, maxlag, window, by)
+                Xi = window_df(x, window, by)
+                print(Xi)
+                Yi = window_df(y, window, by)
+                print(Yi)
+
+                for tm in range(0, len(dfC.columns)):
+                    # print(tm)
+                    Xwi = Xi.iloc[:, tm]
+                    Ywi = Yi.iloc[:, tm]
+                    # print(Xwi)
+                    # print(Ywi)
+                    ccf = tw_ccf(Xwi, Ywi, maxlag, window, by)
+                    # print(ccf)
+                    dfC.iloc[:, tm] = ccf
+
+                # print(dfC)
+                result = dfC
 
                 t = list(np.arange(1, nx, round((nx / len(result.columns)), 2)))  # Timeの表現（何個の窓ができるのか）
                 l = list(np.arange(-maxlag, maxlag + 1))           # ラグ
 
                 # 結果を表として出力
-                result.columns = [str(n) for n in t]  # タイムを文字列としての列名に
+                result.columns = [str(m) for m in t]  # タイムを文字列としての列名に
                 result.index = l                              # ラグをインデックスに
                 result.fillna(0)
                 print(result)
 
                 # Seabornでヒートマップを作図
                 # 一旦、縦長のデータフレームに変換する
-                df_melt = result
+                df_melt = dfC
                 new_col = t  # タイムは数字にしないと意図した通りの順番にならない
                 df_melt.columns = new_col
                 df_melt["Lag"] = l
                 df_melt = pd.melt(df_melt, id_vars=["Lag"], value_vars=new_col)  # ラグを基準に縦長にデータを変換
-                df_melt = df_melt.assign(ID=ID, exp=exp, trial_num=tr, age=age, sex=sex, first_turn=first_turn)
-                #print(df_melt)
+                df_melt = df_melt.assign(ID=ID, exp=exp, trial_num=tr, age=age, sex=sex, first_trun=first_turn)
+                # print(df_melt)
                 df_sum = pd.concat([df_sum, df_melt])
-                df_melt.to_csv("csv_" + outpath + "/df_ccf_" + ID + "-" + exp + "-" + tr + ".csv", index=False)
+                df_melt.to_csv("csv2_" + outpath + "/df_ccf_" + ID + "-" + exp + "-" + tr + ".csv", index=False)
 
                 # そのあと、ピボットテーブルに再変換
                 df_plot = pd.pivot_table(data=df_melt, values="value", columns="variable", index="Lag", aggfunc=np.mean)
-                #print(df_plot)
+                # print(df_plot)
 
                 # ヒートマップ描画、保存
                 heatmap_show(df_plot, ID, exp, tr, outpath, first_turn)
                 plt.close()
 
-    df_sum.to_csv("cross-corr-" + outpath + ".csv", index=False)
+    df_sum.to_csv("cross-corr-" + outpath + "-sample.csv", index=False)
     print("End Process")
