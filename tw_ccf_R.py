@@ -9,13 +9,14 @@ import seaborn as sns
 import pandas as pd
 import math
 
+### Rでのccfに従ったもの（どっかの大学のページで解説されているものと同一） ###
 
 ################################################
 #  宣言
 ################################################
 option = "A"
 maxlag = 1  # 最大のラグ数（正負にこの数だけズラす）
-window = 5  # 何個の要素を持った窓にするか
+window = 10  # 何個の要素を持った窓にするか
 by     = 1      # 窓から窓へは何個ずつ増えるか（いくつ被るのを許容するか）
 n_overlap = window - by
 
@@ -86,9 +87,9 @@ def heatmap_show(df, name, ex, trial, path, first):
                           cbar_kws={"shrink": 0.6}, ax=ax)
 
     if first == "L":
-        focus = "    L - R : 0    R - L : 1"
+        focus = "    A - [C] : 0    C - [A] : 1"
     else:
-        focus = "    R - L : 0    L - R : -1"
+        focus = "    C - [A] : 0    A - [C] : -1"
 
     title = "Windowed Xcorr  _  " + name + "-" + ex + "-" + trial + "\n" + "first:  " + first + focus
     plt.title(title , fontsize=24, y=1.08)
@@ -226,7 +227,7 @@ if __name__ == '__main__':
                 df_melt.columns = new_col
                 df_melt["Lag"] = l
                 df_melt = pd.melt(df_melt, id_vars=["Lag"], value_vars=new_col)  # ラグを基準に縦長にデータを変換
-                df_melt = df_melt.assign(ID=ID, exp=exp, trial_num=tr, age=age, sex=sex, first_trun=first_turn)
+                df_melt = df_melt.assign(ID=ID, exp=exp, trial_num=tr, age=age, sex=sex, first_turn=first_turn)
                 # print(df_melt)
                 df_sum = pd.concat([df_sum, df_melt])
                 df_melt.to_csv("csv2_" + outpath + "/df_ccf_" + ID + "-" + exp + "-" + tr + ".csv", index=False)
@@ -239,5 +240,5 @@ if __name__ == '__main__':
                 heatmap_show(df_plot, ID, exp, tr, outpath, first_turn)
                 plt.close()
 
-    df_sum.to_csv("cross-corr-" + outpath + "-sample.csv", index=False)
+    df_sum.to_csv("cross-corr-" + outpath + "-R.csv", index=False)
     print("End Process")

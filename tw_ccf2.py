@@ -9,6 +9,7 @@ import seaborn as sns
 import pandas as pd
 import math
 
+### 先行研究に従ったもの ###
 
 ################################################
 #  宣言
@@ -111,9 +112,9 @@ def heatmap_show(df, name, ex, trial, path, first):
                           cbar_kws={"shrink": 0.6}, ax=ax)
 
     if first == "L":
-        focus = "    L - R : 0    R - L : -1"
+        focus = "    A - [C] : 0    C - [A] : -1"
     else:
-        focus = "    R - L : 0    L - R : 1"
+        focus = "    C - [A] : 0    A - [C] : 1"
 
     title = "Windowed Xcorr  _  " + name + "-" + ex + "-" + trial + "\n" + "first:  " + first + focus
     plt.title(title , fontsize=24, y=1.08)
@@ -242,5 +243,5 @@ if __name__ == '__main__':
                 heatmap_show(df_plot, ID, exp, tr, outpath, first_turn)
                 plt.close()
 
-    df_sum.to_csv("cross-corr-" + outpath + ".csv", index=False)
+    df_sum.to_csv("cross-corr-" + outpath + "-2.csv", index=False)
     print("End Process")
