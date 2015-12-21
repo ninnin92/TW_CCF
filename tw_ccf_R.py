@@ -16,7 +16,7 @@ import math
 ################################################
 option = "A"
 maxlag = 1  # 最大のラグ数（正負にこの数だけズラす）
-window = 10  # 何個の要素を持った窓にするか
+window = 8  # 何個の要素を持った窓にするか
 by     = 1      # 窓から窓へは何個ずつ増えるか（いくつ被るのを許容するか）
 n_overlap = window - by
 
@@ -159,7 +159,7 @@ if __name__ == '__main__':
                 # 前処理
                 # 今はエラーを除外して分析、エラーを解析するなら複製データがいるかも
                 # 余分なものを削除、エラー関係のも
-                data_tr = data_tr[data_tr["step"] > 0]
+                data_tr = data_tr[data_tr["step"] > 2]
                 data_tr = data_tr[data_tr["error"] != 1]
 
                 data_L = data_tr[data_tr["L_Key"] == "L"].sort_values(by="step").reset_index()
