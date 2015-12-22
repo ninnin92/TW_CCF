@@ -87,9 +87,9 @@ def heatmap_show(df, name, ex, trial, path, first):
                           cbar_kws={"shrink": 0.6}, ax=ax)
 
     if first == "L":
-        focus = "    A - [C] : 0    C - [A] : 1"
+        focus = "    A - [C] : 1    C - [A] : -1"
     else:
-        focus = "    C - [A] : 0    A - [C] : -1"
+        focus = "    C - [A] : -1    A - [C] : 1"
 
     title = "Windowed Xcorr  _  " + name + "-" + ex + "-" + trial + "\n" + "first:  " + first + focus
     plt.title(title , fontsize=24, y=1.08)
@@ -100,7 +100,7 @@ def heatmap_show(df, name, ex, trial, path, first):
     cax = plt.gcf().axes[-1]
     cax.tick_params(labelsize=16, pad=10)
 
-    plt.savefig("fig2_" + path + "/tw_ccf_" + name + "-" + ex + "-" + trial + "-sample.png")
+    plt.savefig("fig3_" + path + "/tw_ccf_" + name + "-" + ex + "-" + trial + "-sample.png")
     #plt.show()
 
 
@@ -165,6 +165,18 @@ if __name__ == '__main__':
                 data_L = data_tr[data_tr["L_Key"] == "L"].sort_values(by="step").reset_index()
                 data_R = data_tr[data_tr["R_Key"] == "R"].sort_values(by="step").reset_index()
 
+                # データの間を０で埋めてみる
+                data_L0 = data_L.copy()
+                data_L0["Time"] = 0
+                data_R0 = data_R.copy()
+                data_R0["Time"] = 0
+
+                data_L = pd.concat([data_L, data_R0])
+                data_R = pd.concat([data_R, data_L0])
+
+                data_L = data_L.sort_values(by="step").reset_index()
+                data_R = data_R.sort_values(by="step").reset_index()
+
                 if data_L["step"].head(1).item() % 2 != 0:
                     first_turn = "L"
                 else:
@@ -209,7 +221,7 @@ if __name__ == '__main__':
                     dfC.iloc[:, tm] = ccf
 
                 # print(dfC)
-                result = dfC
+                result = dfC.copy()
 
                 t = list(np.arange(1, nx, round((nx / len(result.columns)), 2)))  # Timeの表現（何個の窓ができるのか）
                 l = list(np.arange(-maxlag, maxlag + 1))           # ラグ
@@ -222,7 +234,7 @@ if __name__ == '__main__':
 
                 # Seabornでヒートマップを作図
                 # 一旦、縦長のデータフレームに変換する
-                df_melt = dfC
+                df_melt = dfC.copy()
                 new_col = t  # タイムは数字にしないと意図した通りの順番にならない
                 df_melt.columns = new_col
                 df_melt["Lag"] = l
@@ -230,7 +242,7 @@ if __name__ == '__main__':
                 df_melt = df_melt.assign(ID=ID, exp=exp, trial_num=tr, age=age, sex=sex, first_turn=first_turn)
                 # print(df_melt)
                 df_sum = pd.concat([df_sum, df_melt])
-                df_melt.to_csv("csv2_" + outpath + "/df_ccf_" + ID + "-" + exp + "-" + tr + ".csv", index=False)
+                #df_melt.to_csv("csv2_" + outpath + "/df_ccf_" + ID + "-" + exp + "-" + tr + ".csv", index=False)
 
                 # そのあと、ピボットテーブルに再変換
                 df_plot = pd.pivot_table(data=df_melt, values="value", columns="variable", index="Lag", aggfunc=np.mean)
@@ -240,5 +252,5 @@ if __name__ == '__main__':
                 heatmap_show(df_plot, ID, exp, tr, outpath, first_turn)
                 plt.close()
 
-    df_sum.to_csv("cross-corr-" + outpath + "-R.csv", index=False)
+    df_sum.to_csv("cross-corr-" + outpath + "-R-0.csv", index=False)
     print("End Process")
