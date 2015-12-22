@@ -14,9 +14,9 @@ import math
 ################################################
 #  宣言
 ################################################
-option = "A"
+option = "C"
 maxlag = 1  # 最大のラグ数（正負にこの数だけズラす）
-window = 8  # 何個の要素を持った窓にするか
+window = 10  # 何個の要素を持った窓にするか
 by     = 1      # 窓から窓へは何個ずつ増えるか（いくつ被るのを許容するか）
 n_overlap = window - by
 
@@ -100,7 +100,7 @@ def heatmap_show(df, name, ex, trial, path, first):
     cax = plt.gcf().axes[-1]
     cax.tick_params(labelsize=16, pad=10)
 
-    plt.savefig("fig2_" + path + "/tw_ccf_" + name + "-" + ex + "-" + trial + "-sample.png")
+    #plt.savefig("fig3_" + path + "/tw_ccf_" + name + "-" + ex + "-" + trial + "-sample.png")
     #plt.show()
 
 
@@ -179,11 +179,15 @@ if __name__ == '__main__':
                 print(data_x)
 
                 # 対象になる２列を指定、列の長さ確認
-                x = data_x.iloc[:, 0]  # 列数で指定したいときはiloc、ixは挙動がちんぷんかんぷん
-                y = data_x.iloc[:, 1]
+                x_raw = data_x.iloc[:, 0]  # 列数で指定したいときはiloc、ixは挙動がちんぷんかんぷん
+                y_raw = data_x.iloc[:, 1]
 
-                # print(x)
-                # print(y)
+                # 差分値を取る
+                x = x_raw.diff().dropna()
+                y = y_raw.diff().dropna()
+
+                #print(x)
+                #print(y)
 
                 nx = len(x)
                 ny = len(y)
@@ -230,7 +234,7 @@ if __name__ == '__main__':
                 df_melt = df_melt.assign(ID=ID, exp=exp, trial_num=tr, age=age, sex=sex, first_turn=first_turn)
                 # print(df_melt)
                 df_sum = pd.concat([df_sum, df_melt])
-                df_melt.to_csv("csv2_" + outpath + "/df_ccf_" + ID + "-" + exp + "-" + tr + ".csv", index=False)
+                #df_melt.to_csv("csv3_" + outpath + "/df_ccf_" + ID + "-" + exp + "-" + tr + ".csv", index=False)
 
                 # そのあと、ピボットテーブルに再変換
                 df_plot = pd.pivot_table(data=df_melt, values="value", columns="variable", index="Lag", aggfunc=np.mean)
@@ -240,5 +244,5 @@ if __name__ == '__main__':
                 heatmap_show(df_plot, ID, exp, tr, outpath, first_turn)
                 plt.close()
 
-    df_sum.to_csv("cross-corr-" + outpath + "-R.csv", index=False)
+    df_sum.to_csv("cross-corr-" + outpath + "-R-diff.csv", index=False)
     print("End Process")
