@@ -10,15 +10,13 @@ import pandas as pd
 import math
 
 ### Rでのccfに従ったもの（どっかの大学のページで解説されているものと同一） ###
+### エラーターンのペアを全削除するよ
 
 ################################################
 #  宣言
 ################################################
 option = "C"
 maxlag = 1  # 最大のラグ数（正負にこの数だけズラす）
-window = 10  # 何個の要素を持った窓にするか
-by     = 7      # 窓から窓へは何個ずつ増えるか（いくつ被るのを許容するか）
-n_overlap = window - by
 
 ################################################
 #  関数
@@ -38,36 +36,64 @@ def window_df(s, window, by):
     return df
 
 
-def tw_ccf(d1, d2, maxlag, window, by):
-
-    ix = 0
-    x = d1
-    y = d2
-
-    nx = len(x)
-    ny = len(y)
-
+def tw_ccf(data1, data2, maxlag):
+    print(data1)
+    print(data2)
     lag = list(np.arange(-maxlag, maxlag + 1))    # ラグ
+    cnt_list = []
     # print(lag)
     cor = pd.DataFrame(0, index=np.arange(maxlag * 2 + 1), columns=np.arange(1))
 
-    Xm = x.mean(axis=0)
-    Ym = y.mean(axis=0)
-
-    Xsd = x.std(ddof=0)
-    Ysd = y.std(ddof=0)
-
+    ix = 0
     for l in lag:
+        print("Lag :::: " + str(l))
+        if l == -1:
+            # -1の時の処理
+            data1m = data1.tail(-1).reset_index(drop=True)
+            data2m = data2.head(-1).reset_index(drop=True)
+
+            dt = pd.concat([data1m, data2m], axis=1)
+            dt = dt.loc[dt["turnEL"]  != 1, :]
+            dt = dt.loc[dt["turnER"]  != 1, :]
+            print(dt)
+
+        elif l == 0:
+            dt = pd.concat([data1, data2], axis=1)
+            dt = dt.loc[dt["turnEL"]  != 1, :]
+            dt = dt.loc[dt["turnER"]  != 1, :]
+            print(dt)
+
+        elif l == 1:
+            data1p = data1.head(-1).reset_index(drop=True)
+            data2p = data2.tail(-1).reset_index(drop=True)
+
+            dt = pd.concat([data1p, data2p], axis=1)
+            dt = dt.loc[dt["turnEL"]  != 1, :]
+            dt = dt.loc[dt["turnER"]  != 1, :]
+            print(dt)
+
+        data_x = pd.DataFrame({"L": dt["TimeL"], "R": dt["TimeR"]})
+        print(data_x)
+
+        # 対象になる２列を指定、列の長さ確認
+        x = data_x.iloc[:, 0]  # 列数で指定したいときはiloc、ixは挙動がちんぷんかんぷん
+        y = data_x.iloc[:, 1]
+
+        nx = len(x)
+        cnt_list.append(nx)
+        ny = len(y)
+
+        Xm = x.mean(axis=0)
+        Ym = y.mean(axis=0)
+
+        Xsd = x.std(ddof=0)
+        Ysd = y.std(ddof=0)
+
         # print(l)
         c = 0
 
-        if l < 0:
-            for n in range((- l), nx):
-                c = c + (x.iloc[n] - Xm) * (y.iloc[n + l] - Ym)
-
-        if l >= 0:
-            for n in range(0, nx - l):
-                c = c + (x.iloc[n] - Xm) * (y.iloc[n + l] - Ym)
+        for n in range(0, nx):
+            c = c + (x.iloc[n] - Xm) * (y.iloc[n] - Ym)
 
         c = c / nx
         r = c / (Xsd * Ysd)
@@ -76,32 +102,7 @@ def tw_ccf(d1, d2, maxlag, window, by):
         ix += 1
 
     cor = pd.Series(cor.values.flatten())
-    return(cor)
-
-
-def heatmap_show(df, name, ex, trial, path, first):
-    sns.set(style="white")  # テーマ
-    f, ax = plt.subplots(figsize=(16, 9))  # Figサイズ
-    cmap = sns.diverging_palette(220, 10, as_cmap=True)  # カラーパレット
-    sns.heatmap(df, square=True, cmap=cmap, linewidths=.5, vmax=1, vmin=-1,
-                          cbar_kws={"shrink": 0.6}, ax=ax)
-
-    if first == "L":
-        focus = "    A - [C] : 0    C - [A] : 1"
-    else:
-        focus = "    C - [A] : 0    A - [C] : -1"
-
-    title = "Windowed Xcorr  _  " + name + "-" + ex + "-" + trial + "\n" + "first:  " + first + focus
-    plt.title(title , fontsize=24, y=1.08)
-    plt.xlabel("Time", fontsize=20, labelpad=20)  # Xのラベルサイズ
-    plt.ylabel("Lag", fontsize=20, labelpad=20)  # Yのラベルサイズ
-    plt.tick_params(labelsize=16)
-
-    cax = plt.gcf().axes[-1]
-    cax.tick_params(labelsize=16, pad=10)
-
-    plt.savefig("fig2_" + path + "/tw_ccf_" + name + "-" + ex + "-" + trial + "-sample.png")
-    #plt.show()
+    return(cor, cnt_list)
 
 
 ################################################
@@ -114,8 +115,6 @@ if __name__ == '__main__':
     print("------------------")
     print("Option:  " + option)
     print("Maxlag:  " + str(maxlag))
-    print("Window:  "  + str(window))
-    print("By:  " + str(by))
     print("------------------")
 
     if option == "A":
@@ -162,6 +161,22 @@ if __name__ == '__main__':
                 data_tr = data_tr[data_tr["step"] > 0]
                 # data_tr = data_tr[data_tr["error"] != 1]
 
+                turnE_list = list(set(list(data_tr.ix[data_tr["error"] == 1, :]["step"])))
+                print(turnE_list)
+
+                data_tr = data_tr.assign(turnE=0)
+                data_tr_te = pd.DataFrame()
+                for sp in range(1, 43):
+                    if sp in turnE_list:
+                        dt = data_tr.loc[data_tr["step"] == sp, :]
+                        dt["turnE"] = 1
+                        data_tr_te = pd.concat([dt, data_tr_te])
+                    else:
+                        dt = data_tr.loc[data_tr["step"] == sp, :]
+                        data_tr_te = pd.concat([dt, data_tr_te])
+
+                data_tr = data_tr_te.copy()
+
                 data_L = data_tr[data_tr["L_Key"] == "L"].sort_values(by="step").reset_index()
                 data_R = data_tr[data_tr["R_Key"] == "R"].sort_values(by="step").reset_index()
 
@@ -170,75 +185,45 @@ if __name__ == '__main__':
                 else:
                     first_turn = "R"
 
-                # 前処理
-                # 今はエラーを除外して分析、エラーを解析するなら複製データがいるかも
-                # 余分なものを削除、エラー関係のも
+                data_L = data_L.loc[:, ["Time", "error", "step", "turnE"]]
+                data_R = data_R.loc[:, ["Time", "error", "step", "turnE"]]
+                data_L = data_L.rename(columns={"Time": "TimeL", "error": "errorL", "step": "stepL", "turnE": "turnEL"})
+                data_R = data_R.rename(columns={"Time": "TimeR", "error": "errorR", "step": "stepR", "turnE": "turnER"})
 
-                data_x = pd.DataFrame({"L": data_L["Time"], "R": data_R["Time"]})
+                data_L = data_L[data_L["errorL"] != 1].reset_index(drop=True)
+                data_R = data_R[data_R["errorR"] != 1].reset_index(drop=True)
 
-                print(data_x)
-
-                # 対象になる２列を指定、列の長さ確認
-                x = data_x.iloc[:, 0]  # 列数で指定したいときはiloc、ixは挙動がちんぷんかんぷん
-                y = data_x.iloc[:, 1]
-
-                # print(x)
-                # print(y)
-
-                nx = len(x)
-                ny = len(y)
 
                 # 出力データフレームを仮作成
                 dfC = pd.DataFrame(0, index=np.arange(maxlag * 2 + 1),
-                                   columns=np.arange((nx - n_overlap) / (window - n_overlap)))
-                # print(dfC)
+                                   columns=np.arange(1))
 
-                Xi = window_df(x, window, by)
-                print(Xi)
-                Yi = window_df(y, window, by)
-                print(Yi)
-
-                for tm in range(0, len(dfC.columns)):
-                    # print(tm)
-                    Xwi = Xi.iloc[:, tm]
-                    Ywi = Yi.iloc[:, tm]
-                    # print(Xwi)
-                    # print(Ywi)
-                    ccf = tw_ccf(Xwi, Ywi, maxlag, window, by)
-                    # print(ccf)
-                    dfC.iloc[:, tm] = ccf
+                ccf, cnt_list = tw_ccf(data_L, data_R, maxlag)
+                # print(ccf)
+                dfC.iloc[:, 0] = ccf
 
                 # print(dfC)
                 result = dfC
 
-                t = list(np.arange(1, nx, round((nx / len(result.columns)), 2)))  # Timeの表現（何個の窓ができるのか）
+                t = 1  # Timeの表現（何個の窓ができるのか）
                 l = list(np.arange(-maxlag, maxlag + 1))           # ラグ
 
                 # 結果を表として出力
-                result.columns = [str(m) for m in t]  # タイムを文字列としての列名に
+                result.columns = ["1"]  # タイムを文字列としての列名に
                 result.index = l                              # ラグをインデックスに
                 result.fillna(0)
                 print(result)
 
                 # Seabornでヒートマップを作図
                 # 一旦、縦長のデータフレームに変換する
-                df_melt = dfC
-                new_col = t  # タイムは数字にしないと意図した通りの順番にならない
+                df_melt = dfC.copy()
+                new_col = [1]  # タイムは数字にしないと意図した通りの順番にならない
                 df_melt.columns = new_col
                 df_melt["Lag"] = l
                 df_melt = pd.melt(df_melt, id_vars=["Lag"], value_vars=new_col)  # ラグを基準に縦長にデータを変換
-                df_melt = df_melt.assign(ID=ID, exp=exp, trial_num=tr, age=age, sex=sex, first_turn=first_turn)
+                df_melt = df_melt.assign(ID=ID, exp=exp, trial_num=tr, age=age, sex=sex, first_turn=first_turn, cnt=cnt_list)
                 # print(df_melt)
                 df_sum = pd.concat([df_sum, df_melt])
-                df_melt.to_csv("csv2_" + outpath + "/df_ccf_" + ID + "-" + exp + "-" + tr + ".csv", index=False)
 
-                # そのあと、ピボットテーブルに再変換
-                df_plot = pd.pivot_table(data=df_melt, values="value", columns="variable", index="Lag", aggfunc=np.mean)
-                # print(df_plot)
-
-                # ヒートマップ描画、保存
-                heatmap_show(df_plot, ID, exp, tr, outpath, first_turn)
-                plt.close()
-
-    df_sum.to_csv("cross-corr-" + outpath + "-R7.csv", index=False)
+    df_sum.to_csv("cross-corr-" + outpath + "-R_fix.csv", index=False)
     print("End Process")
