@@ -16,8 +16,8 @@ import math
 ################################################
 option = "C"
 maxlag = 1  # 最大のラグ数（正負にこの数だけズラす）
-window = 10  # 何個の要素を持った窓にするか
-by     = 1      # 窓から窓へは何個ずつ増えるか（いくつ被るのを許容するか）
+window = 7  # 何個の要素を持った窓にするか
+by     = 7      # 窓から窓へは何個ずつ増えるか（いくつ被るのを許容するか）
 n_overlap = window - by
 
 ################################################
@@ -240,5 +240,5 @@ if __name__ == '__main__':
                 heatmap_show(df_plot, ID, exp, tr, outpath, first_turn)
                 plt.close()
 
-    df_sum.to_csv("cross-corr-" + outpath + "-R.csv", index=False)
+    df_sum.to_csv("cross-corr-" + outpath + "-R7.csv", index=False)
     print("End Process")
