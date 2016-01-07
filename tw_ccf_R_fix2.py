@@ -15,7 +15,7 @@ import math
 ################################################
 #  宣言
 ################################################
-option = "A"
+option = "C"
 maxlag = 1  # 最大のラグ数（正負にこの数だけズラす）
 
 ################################################
@@ -49,6 +49,12 @@ def tw_ccf(data1, data2, maxlag):
         print("Lag :::: " + str(l))
         if l == -1:
             # -1の時の処理
+
+            data1_prm = data1.head(1).reset_index(drop=True)
+            data2_prm = data2.tail(1).reset_index(drop=True)
+            dt_prm = pd.concat([data1_prm, data2_prm], axis=1)
+            #print(dt_prm)
+
             data1m = data1.tail(-1).reset_index(drop=True)
             data2m = data2.head(-1).reset_index(drop=True)
 
@@ -56,14 +62,20 @@ def tw_ccf(data1, data2, maxlag):
             dt = dt.loc[dt["turnEL"]  != 1, :]
             dt = dt.loc[dt["turnER"]  != 1, :]
             print(dt)
+            dt_prm = pd.concat([dt, dt_prm])
 
         elif l == 0:
             dt = pd.concat([data1, data2], axis=1)
             dt = dt.loc[dt["turnEL"]  != 1, :]
             dt = dt.loc[dt["turnER"]  != 1, :]
             print(dt)
+            dt_prm = dt.copy()
 
         elif l == 1:
+            data1_prm = data1.tail(1).reset_index(drop=True)
+            data2_prm = data2.head(1).reset_index(drop=True)
+            dt_prm = pd.concat([data1_prm, data2_prm], axis=1)
+
             data1p = data1.head(-1).reset_index(drop=True)
             data2p = data2.tail(-1).reset_index(drop=True)
 
@@ -71,33 +83,31 @@ def tw_ccf(data1, data2, maxlag):
             dt = dt.loc[dt["turnEL"]  != 1, :]
             dt = dt.loc[dt["turnER"]  != 1, :]
             print(dt)
+            dt_prm = pd.concat([dt, dt_prm])
 
-        check_turn = dt["stepL"].head(1).item()
-        print(check_turn)
-
-        if check_turn % 2 != 0:
-                    first_turn = "L"
-        else:
-                    first_turn = "R"
-
-        print(first_turn)
+        print(dt_prm)
 
         data_x = pd.DataFrame({"L": dt["TimeL"], "R": dt["TimeR"]})
+        data_prm = pd.DataFrame({"L": dt_prm["TimeL"], "R": dt_prm["TimeR"]})
         print(data_x)
+        #print(data_prm)
 
         # 対象になる２列を指定、列の長さ確認
         x = data_x.iloc[:, 0]  # 列数で指定したいときはiloc、ixは挙動がちんぷんかんぷん
         y = data_x.iloc[:, 1]
+        # パラメータ用
+        prm_x = data_prm.iloc[:, 0]  # 列数で指定したいときはiloc、ixは挙動がちんぷんかんぷん
+        prm_y = data_prm.iloc[:, 1]
 
         nx = len(x)
         cnt_list.append(nx)
         ny = len(y)
 
-        Xm = x.mean(axis=0)
-        Ym = y.mean(axis=0)
+        Xm = prm_x.mean(axis=0)
+        Ym = prm_y.mean(axis=0)
 
-        Xsd = x.std(ddof=0)
-        Ysd = y.std(ddof=0)
+        Xsd = prm_x.std(ddof=0)
+        Ysd = prm_y.std(ddof=0)
 
         # print(l)
         c = 0
@@ -112,7 +122,7 @@ def tw_ccf(data1, data2, maxlag):
         ix += 1
 
     cor = pd.Series(cor.values.flatten())
-    return(cor, cnt_list, first_turn)
+    return(cor, cnt_list)
 
 
 ################################################
@@ -190,6 +200,10 @@ if __name__ == '__main__':
                 data_L = data_tr[data_tr["L_Key"] == "L"].sort_values(by="step").reset_index()
                 data_R = data_tr[data_tr["R_Key"] == "R"].sort_values(by="step").reset_index()
 
+                if data_L["step"].head(1).item() % 2 != 0:
+                    first_turn = "L"
+                else:
+                    first_turn = "R"
 
                 data_L = data_L.loc[:, ["Time", "error", "step", "turnE"]]
                 data_R = data_R.loc[:, ["Time", "error", "step", "turnE"]]
@@ -204,7 +218,7 @@ if __name__ == '__main__':
                 dfC = pd.DataFrame(0, index=np.arange(maxlag * 2 + 1),
                                    columns=np.arange(1))
 
-                ccf, cnt_list, first_turn = tw_ccf(data_L, data_R, maxlag)
+                ccf, cnt_list = tw_ccf(data_L, data_R, maxlag)
                 # print(ccf)
                 dfC.iloc[:, 0] = ccf
 
@@ -232,5 +246,5 @@ if __name__ == '__main__':
                 df_sum = pd.concat([df_sum, df_melt])
 
     df_sum = df_sum.fillna(0)
-    df_sum.to_csv("cross-corr-" + outpath + "-R_fix.csv", index=False)
+    df_sum.to_csv("cross-corr-" + outpath + "-R_fix2.csv", index=False)
     print("End Process")
